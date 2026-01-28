@@ -7,7 +7,7 @@
 
 /* Base */
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+    font-family: 'Helvetica Neue', Helvetica, Arial, 'Noto Serif KR', serif;
     background: #fff;
     color: #000;
     font-size: 16px;
@@ -102,7 +102,7 @@ a {
 
 .detail-title {
     font-size: 24px;
-    font-weight: 700;
+    font-weight: 400;
     margin-bottom: 8px;
 }
 
@@ -339,11 +339,11 @@ a {
     }
 
     .main-title {
-        font-size: 28px;
+        font-size: 27px;
     }
 
     .tagline {
-        font-size: 16px;
+        font-size: 15px;
     }
 
     .list-item a {
@@ -352,11 +352,11 @@ a {
 
     .item-date {
         width: 90px;
-        font-size: 14px;
+        font-size: 13px;
     }
 
     .item-title {
-        font-size: 18px;
+        font-size: 17px;
     }
 
     .detail-header,
