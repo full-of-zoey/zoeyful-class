@@ -339,16 +339,16 @@ a {
     }
 
     .list-item a {
-        padding: 12px 24px;
+        padding: 16px 24px;
     }
 
     .item-date {
-        width: 80px;
-        font-size: 11px;
+        width: 90px;
+        font-size: 14px;
     }
 
     .item-title {
-        font-size: 14px;
+        font-size: 18px;
     }
 
     .detail-header,
