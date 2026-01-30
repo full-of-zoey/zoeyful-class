@@ -142,6 +142,24 @@ a {
     color: #ccc;
 }
 
+.section blockquote {
+    margin-top: 16px;
+    padding-left: 20px;
+    border-left: 2px solid #ccc;
+    font-size: 14px;
+    line-height: 1.8;
+    color: #444;
+}
+
+.section blockquote a {
+    color: #666;
+    text-decoration: underline;
+}
+
+.section blockquote a:hover {
+    color: #000;
+}
+
 /* Photo */
 .section-photo {
     padding: 0;
