@@ -258,17 +258,10 @@ a {
     color: #999;
 }
 
-/* Inverted List Item */
-.list-item-inverted {
-    background: #000;
-}
-
-.list-item-inverted a {
+/* About List Item */
+.list-item-about a:hover {
+    background: #F43F00;
     color: #fff;
-}
-
-.list-item-inverted a:hover {
-    background: #222;
 }
 
 /* Empty List Item */

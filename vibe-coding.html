@@ -15,7 +15,6 @@
             <a href="index.html" class="back-link">← Zoeyful Class</a>
             <p class="detail-date">20250131</p>
             <h1 class="detail-title">바이브코딩 워크숍</h1>
-            <p class="detail-meta">8명 / 서점 선샤이닝</p>
         </header>
 
         <section class="section section-photo">
@@ -62,6 +61,11 @@
         </section>
 
         <section class="section">
+            <h2 class="section-title">Members</h2>
+            <p>무옥, 은선, 보름, 보라, 성희, 채원, 주하, 혜지</p>
+        </section>
+
+        <section class="section">
             <h2 class="section-title">Comments</h2>
             <div class="comments" id="comments">
             </div>
@@ -75,31 +79,64 @@
             </form>
         </section>
 
-        <footer class="footer">
-            Zoeyful Class
+        <footer class="home-footer">
+            <p class="copyright">© Zoeyful Foundation</p>
+            <p class="sister-site">
+                <a href="https://full-of-zoey.github.io/culture_log/" target="_blank">Culture Log →</a>
+            </p>
         </footer>
     </main>
 
-    <script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBkroK82iF79Zicdk96pthEPya0SIMMAIc",
+            authDomain: "zoeyful-class.firebaseapp.com",
+            projectId: "zoeyful-class",
+            storageBucket: "zoeyful-class.firebasestorage.app",
+            messagingSenderId: "236510346953",
+            appId: "1:236510346953:web:54e446cc5612c9dab0d718"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
         const form = document.getElementById('commentForm');
-        const comments = document.getElementById('comments');
+        const commentsDiv = document.getElementById('comments');
         const authorInput = document.getElementById('authorInput');
         const textInput = document.getElementById('textInput');
 
-        form.addEventListener('submit', (e) => {
+        // 댓글 실시간 불러오기
+        const q = query(collection(db, "vibe-coding-comments"), orderBy("createdAt", "asc"));
+        onSnapshot(q, (snapshot) => {
+            commentsDiv.innerHTML = '';
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                const comment = document.createElement('div');
+                comment.className = 'comment';
+                comment.innerHTML = `
+                    <span class="comment-author">${data.author}</span>
+                    <span class="comment-text">"${data.text}"</span>
+                `;
+                commentsDiv.appendChild(comment);
+            });
+        });
+
+        // 댓글 저장
+        form.addEventListener('submit', async (e) => {
             e.preventDefault();
 
             const author = authorInput.value.trim();
             const text = textInput.value.trim();
 
             if (author && text) {
-                const comment = document.createElement('div');
-                comment.className = 'comment comment-new';
-                comment.innerHTML = `
-                    <span class="comment-author">${author}</span>
-                    <span class="comment-text">"${text}"</span>
-                `;
-                comments.appendChild(comment);
+                await addDoc(collection(db, "vibe-coding-comments"), {
+                    author: author,
+                    text: text,
+                    createdAt: serverTimestamp()
+                });
 
                 authorInput.value = '';
                 textInput.value = '';
