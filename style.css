@@ -131,6 +131,10 @@ a {
     line-height: 1.7;
 }
 
+.section p + p {
+    margin-top: 16px;
+}
+
 .section ul {
     list-style: none;
     font-size: 15px;
