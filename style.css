@@ -262,10 +262,14 @@ a {
     padding: 8px 16px;
     border: 1px solid #000;
     background: #fff;
+    color: #000;
     font-size: 12px;
     font-family: inherit;
     cursor: pointer;
     transition: all 0.15s;
+    -webkit-appearance: none;
+    appearance: none;
+    border-radius: 0;
 }
 
 .btn-submit:hover {
