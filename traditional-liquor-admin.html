@@ -54,6 +54,31 @@
 
             <div class="admin-actions">
                 <button type="button" class="btn-submit" id="exportBtn">CSV로 내보내기</button>
+            </div>
+        </section>
+
+        <section class="section" id="waitlistSection" hidden>
+            <h2 class="section-title">Waitlist</h2>
+            <p class="admin-meta" id="waitlistMeta">불러오는 중…</p>
+
+            <div class="admin-table-wrap">
+                <table class="admin-table" id="waitlistTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>이름</th>
+                            <th>이메일</th>
+                            <th>휴대폰</th>
+                            <th>자기소개·동기</th>
+                            <th>신청 시각</th>
+                        </tr>
+                    </thead>
+                    <tbody id="waitlistTbody"></tbody>
+                </table>
+            </div>
+
+            <div class="admin-actions">
+                <button type="button" class="btn-submit" id="exportWaitlistBtn">대기명단 CSV로 내보내기</button>
                 <button type="button" class="btn-submit btn-logout" id="logoutBtn">로그아웃</button>
             </div>
         </section>
@@ -68,7 +93,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, query, orderBy, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, query, orderBy, onSnapshot, doc, updateDoc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
         // 관리자로 허용된 이메일 (필요하면 더 추가)
@@ -77,8 +102,9 @@
             "honggiina@gmail.com"
         ];
 
-        const CAPACITY = 8;
-        const COLLECTION = "traditional-liquor-signups";
+        const CAPACITY = 9;
+        const SIGNUPS = "traditional-liquor-signups";
+        const WAITLIST = "traditional-liquor-waitlist";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBkroK82iF79Zicdk96pthEPya0SIMMAIc",
@@ -102,9 +128,17 @@
         const adminMeta = document.getElementById('adminMeta');
         const tbody = document.getElementById('signupTbody');
         const exportBtn = document.getElementById('exportBtn');
+        const waitlistSection = document.getElementById('waitlistSection');
+        const waitlistMeta = document.getElementById('waitlistMeta');
+        const waitlistTbody = document.getElementById('waitlistTbody');
+        const exportWaitlistBtn = document.getElementById('exportWaitlistBtn');
+
+        const metaRef = doc(db, 'meta', 'traditional-liquor');
 
         let signups = [];
-        let unsubscribe = null;
+        let waitlist = [];
+        let unsubSignups = null;
+        let unsubWaitlist = null;
 
         onAuthStateChanged(auth, (user) => {
             if (user && ADMIN_EMAILS.includes(user.email)) {
@@ -117,7 +151,9 @@
                 }
                 loginScreen.hidden = false;
                 adminPanel.hidden = true;
-                if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+                waitlistSection.hidden = true;
+                if (unsubSignups) { unsubSignups(); unsubSignups = null; }
+                if (unsubWaitlist) { unsubWaitlist(); unsubWaitlist = null; }
             }
         });
 
@@ -136,18 +172,44 @@
         function showAdmin() {
             loginScreen.hidden = true;
             adminPanel.hidden = false;
+            waitlistSection.hidden = false;
 
-            if (unsubscribe) unsubscribe();
-            const q = query(collection(db, COLLECTION), orderBy("createdAt", "asc"));
-            unsubscribe = onSnapshot(q, (snapshot) => {
+            if (unsubSignups) unsubSignups();
+            const qSignups = query(collection(db, SIGNUPS), orderBy("createdAt", "asc"));
+            unsubSignups = onSnapshot(qSignups, async (snapshot) => {
                 signups = [];
                 snapshot.forEach((d) => {
                     signups.push({ id: d.id, ...d.data() });
                 });
                 render();
+                await syncMeta();
             }, (err) => {
                 adminMeta.textContent = '데이터를 불러오지 못했어요. 보안 규칙을 확인해주세요. (' + err.code + ')';
             });
+
+            if (unsubWaitlist) unsubWaitlist();
+            const qWaitlist = query(collection(db, WAITLIST), orderBy("createdAt", "asc"));
+            unsubWaitlist = onSnapshot(qWaitlist, (snapshot) => {
+                waitlist = [];
+                snapshot.forEach((d) => {
+                    waitlist.push({ id: d.id, ...d.data() });
+                });
+                renderWaitlist();
+            }, (err) => {
+                waitlistMeta.textContent = '대기명단을 불러오지 못했어요. (' + err.code + ')';
+            });
+        }
+
+        async function syncMeta() {
+            try {
+                const snap = await getDoc(metaRef);
+                const current = snap.exists() ? (snap.data().signupCount || 0) : -1;
+                if (current !== signups.length) {
+                    await setDoc(metaRef, { signupCount: signups.length });
+                }
+            } catch (err) {
+                console.warn('meta sync failed:', err.code);
+            }
         }
 
         function render() {
@@ -173,8 +235,26 @@
             tbody.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
                 cb.addEventListener('change', async (e) => {
                     const id = e.target.dataset.id;
-                    await updateDoc(doc(db, COLLECTION, id), { paid: e.target.checked });
+                    await updateDoc(doc(db, SIGNUPS, id), { paid: e.target.checked });
                 });
+            });
+        }
+
+        function renderWaitlist() {
+            waitlistMeta.innerHTML = `대기명단 <b>${waitlist.length}</b>명`;
+            waitlistTbody.innerHTML = '';
+            waitlist.forEach((s, idx) => {
+                const tr = document.createElement('tr');
+                const ts = s.createdAt && s.createdAt.toDate ? formatDate(s.createdAt.toDate()) : '-';
+                tr.innerHTML = `
+                    <td>${idx + 1}</td>
+                    <td>${escapeHtml(s.name || '')}</td>
+                    <td>${escapeHtml(s.email || '')}</td>
+                    <td>${escapeHtml(s.phone || '')}</td>
+                    <td class="cell-motivation">${escapeHtml(s.motivation || '')}</td>
+                    <td>${ts}</td>
+                `;
+                waitlistTbody.appendChild(tr);
             });
         }
 
@@ -192,6 +272,19 @@
                 .replace(/'/g, '&#39;');
         }
 
+        function downloadCsv(filename, header, rows) {
+            const csv = [header, ...rows]
+                .map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))
+                .join('\n');
+            const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
         exportBtn.addEventListener('click', () => {
             const header = ['번호','이름','이메일','휴대폰','자기소개·동기','신청시각','입금'];
             const rows = signups.map((s, i) => [
@@ -203,16 +296,20 @@
                 s.createdAt && s.createdAt.toDate ? formatDate(s.createdAt.toDate()) : '',
                 s.paid ? 'O' : ''
             ]);
-            const csv = [header, ...rows]
-                .map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))
-                .join('\n');
-            const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `traditional-liquor-signups-${new Date().toISOString().slice(0,10)}.csv`;
-            a.click();
-            URL.revokeObjectURL(url);
+            downloadCsv(`traditional-liquor-signups-${new Date().toISOString().slice(0,10)}.csv`, header, rows);
+        });
+
+        exportWaitlistBtn.addEventListener('click', () => {
+            const header = ['번호','이름','이메일','휴대폰','자기소개·동기','신청시각'];
+            const rows = waitlist.map((s, i) => [
+                i + 1,
+                s.name || '',
+                s.email || '',
+                s.phone || '',
+                (s.motivation || '').replace(/\n/g, ' '),
+                s.createdAt && s.createdAt.toDate ? formatDate(s.createdAt.toDate()) : ''
+            ]);
+            downloadCsv(`traditional-liquor-waitlist-${new Date().toISOString().slice(0,10)}.csv`, header, rows);
         });
     </script>
 </body>
