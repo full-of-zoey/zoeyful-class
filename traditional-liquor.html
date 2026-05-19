@@ -93,7 +93,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, doc, onSnapshot, setDoc, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, doc, onSnapshot, setDoc, getDoc, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBkroK82iF79Zicdk96pthEPya0SIMMAIc",
@@ -107,6 +107,9 @@
         const CAPACITY = 9;
         const SIGNUPS = "traditional-liquor-signups";
         const WAITLIST = "traditional-liquor-waitlist";
+
+        // 9명 정원 도달 시 알림 (Apps Script Web App URL 입력)
+        const NOTIFY_URL = "";
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
@@ -177,6 +180,25 @@
                     });
                     await setDoc(metaRef, { signupCount: increment(1) }, { merge: true });
                     thanksMessage.textContent = '신청해주셔서 감사해요! 입금 확인 후 따로 안내드릴게요.';
+
+                    // 9명 도달 시 알림 발송 (정확히 9 도달 순간만 한 번)
+                    try {
+                        const updated = await getDoc(metaRef);
+                        const newCount = updated.exists() ? (updated.data().signupCount || 0) : 0;
+                        if (newCount === CAPACITY && NOTIFY_URL) {
+                            fetch(NOTIFY_URL, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                                body: JSON.stringify({
+                                    subject: '[조이풀클래스] 〈전통주 첫걸음〉 정원이 채워졌어요',
+                                    body: `방금 ${name} 님의 신청으로 9명 정원이 모두 채워졌어요.\n\n관리자 페이지에서 확인:\nhttps://full-of-zoey.github.io/zoeyful-class/traditional-liquor-admin.html\n\n이후 신청은 대기명단으로 자동 접수됩니다.`
+                                }),
+                                keepalive: true
+                            }).catch(() => {});
+                        }
+                    } catch (notifyErr) {
+                        console.warn('notify failed:', notifyErr);
+                    }
                 }
 
                 alreadySubmitted = true;
